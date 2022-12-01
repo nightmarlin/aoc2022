@@ -67,16 +67,21 @@ func main() {
 		localFolder = "inputs"
 	}
 
-	log.Info(
-		"please choose a solution to run",
-		zap.Ints("available days", sortedSolutionNames()),
-	)
+	day := os.Getenv("SOLUTION")
+	if day == "" {
+		log.Info(
+			"please choose a solution to run",
+			zap.Ints("available days", sortedSolutionNames()),
+		)
 
-	day, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil {
-		log.Fatal("failed to read input from stdin", zap.Error(err))
+		read, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil {
+			log.Fatal("failed to read input from stdin", zap.Error(err))
+		}
+		day = read
+	} else {
+		log.Info("solution set via environment variable", zap.String("day", day))
 	}
-
 	day = strings.Trim(day, "0\n")
 
 	sInit, ok := solutions[day]
