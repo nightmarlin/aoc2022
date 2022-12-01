@@ -15,15 +15,20 @@ import (
 )
 
 type Challenge interface {
+	// PartOne of a Challenge is generally a specific application of a problem
+	// statement.
 	PartOne(ctx context.Context, input string) error
+
+	// PartTwo of a Challenge is typically a more generalised form of the problem
+	// presented in PartOne, using the same input.
 	PartTwo(ctx context.Context, input string) error
 }
-
-var log *zap.Logger
 
 var challenges = map[string]func() Challenge{
 	"1": func() Challenge { return day01.New(log) },
 }
+
+var log *zap.Logger
 
 func init() {
 	l, err := zap.NewDevelopment()
