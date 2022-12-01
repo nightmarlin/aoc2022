@@ -41,8 +41,20 @@ func NewFetcher(log *zap.Logger, sessionCookie string, localFolder string) (Fetc
 		[]*http.Cookie{{Name: "session", Value: sessionCookie, MaxAge: 300}},
 	)
 
+	localFolder, err = filepath.Abs(localFolder)
+	if err != nil {
+		return Fetcher{}, fmt.Errorf("failed to find absolute path: %w", err)
+	}
+
+	err = os.MkdirAll(localFolder, os.ModePerm)
+	if err != nil {
+		return Fetcher{}, fmt.Errorf("failed to ensure local folder exists: %w", err)
+	}
+
 	return Fetcher{
-			log:         log.Named("input-fetcher"),
+			log: log.
+				Named("input-fetcher").
+				With(zap.String("localFolder", localFolder)),
 			client:      &http.Client{Jar: cj},
 			localFolder: localFolder,
 		},
@@ -116,31 +128,13 @@ func (f Fetcher) fetchInputFromAOC(ctx context.Context, day string) (string, err
 
 func (f Fetcher) inputFileName(day string) string {
 	if len(day) == 1 {
-		return fmt.Sprintf("0%s", day)
+		day = fmt.Sprintf("0%s", day)
 	}
-	return day
-}
-
-func (f Fetcher) ensureLocalFolderExists() (string, error) {
-	abs, err := filepath.Abs(f.localFolder)
-	if err != nil {
-		return "", fmt.Errorf("failed to find absolute path: %w", err)
-	}
-
-	err = os.MkdirAll(abs, os.ModePerm)
-	if err != nil {
-		return "", fmt.Errorf("failed to create local folder: %w", err)
-	}
-	return abs, nil
+	return filepath.Join(f.localFolder, day)
 }
 
 func (f Fetcher) isInputInLocalFolder(day string) (bool, error) {
-	localFolder, err := f.ensureLocalFolderExists()
-	if err != nil {
-		return false, fmt.Errorf("failed to ensure local folder exists: %w", err)
-	}
-
-	_, err = os.Stat(filepath.Join(localFolder, f.inputFileName(day)))
+	_, err := os.Stat(f.inputFileName(day))
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		return false, nil
@@ -152,12 +146,7 @@ func (f Fetcher) isInputInLocalFolder(day string) (bool, error) {
 }
 
 func (f Fetcher) fetchInputFromLocalFolder(day string) (string, error) {
-	localFolder, err := f.ensureLocalFolderExists()
-	if err != nil {
-		return "", fmt.Errorf("failed to ensure local folder exists: %w", err)
-	}
-
-	input, err := os.ReadFile(filepath.Join(localFolder, f.inputFileName(day)))
+	input, err := os.ReadFile(f.inputFileName(day))
 	if err != nil {
 		return "", fmt.Errorf("failed to read input file for day: %w", err)
 	}
@@ -165,12 +154,7 @@ func (f Fetcher) fetchInputFromLocalFolder(day string) (string, error) {
 }
 
 func (f Fetcher) saveInputToLocalFolder(day, input string) error {
-	localFolder, err := f.ensureLocalFolderExists()
-	if err != nil {
-		return fmt.Errorf("failed to ensure local folder exists: %w", err)
-	}
-
-	err = os.WriteFile(filepath.Join(localFolder, f.inputFileName(day)), []byte(input), os.ModePerm)
+	err := os.WriteFile(f.inputFileName(day), []byte(input), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to write input file for day: %w", err)
 	}

@@ -5,51 +5,71 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
 
 	"github.com/nightmarlin/aoc2022/aoc"
 	"github.com/nightmarlin/aoc2022/day01"
+	"github.com/nightmarlin/aoc2022/day02"
 	"github.com/nightmarlin/aoc2022/lib"
 )
 
-type Challenge interface {
-	// PartOne of a Challenge is generally a specific application of a problem
+// A Solution carries out some task on the input, as defined by the AoC
+// challenge. Solutions are expected to gracefully handle cancelled contexts if
+// there is a likelihood of them running for extended time periods.
+type Solution interface {
+	// PartOne of a Solution is generally a specific application of a problem
 	// statement.
 	PartOne(ctx context.Context, input string) error
 
-	// PartTwo of a Challenge is typically a more generalised form of the problem
+	// PartTwo of a Solution is typically a more generalised form of the problem
 	// presented in PartOne, using the same input.
 	PartTwo(ctx context.Context, input string) error
 }
 
-var challenges = map[string]func() Challenge{
-	"1": func() Challenge { return day01.New(log) },
+var solutions = map[string]func(*zap.Logger) Solution{
+	"1": func(log *zap.Logger) Solution { return day01.New(log) },
+	"2": func(log *zap.Logger) Solution { return day02.New(log) },
 }
 
-var log *zap.Logger
+func initLogger() *zap.Logger {
+	cfg := zap.NewDevelopmentConfig()
+	cfg.Level.SetLevel(zap.InfoLevel)
+	cfg.DisableStacktrace = true
 
-func init() {
-	l, err := zap.NewDevelopment()
+	if trace, err := strconv.ParseBool(os.Getenv("TRACE")); err != nil && trace {
+		cfg.Level.SetLevel(zap.DebugLevel)
+		cfg.DisableStacktrace = false
+	}
+
+	log, err := cfg.Build()
 	if err != nil {
-		_, _ = fmt.Fprint(os.Stderr, "failed to init logger:", err)
+		_, _ = fmt.Fprintf(os.Stderr, "failed to init logger: %s\n", err.Error())
 		os.Exit(1)
 	}
-	log = l
+
+	return log
 }
 
 func main() {
 	ctx := context.Background()
+	log := initLogger()
 
 	sessionCookie := os.Getenv("SESSION_COOKIE")
 	if sessionCookie == "" {
 		log.Fatal("session cookie must be set to fetch aoc inputs")
 	}
+	localFolder := os.Getenv("LOCAL_FOLDER")
+	if localFolder == "" {
+		localFolder = "inputs"
+	}
 
 	log.Info(
-		"please choose a challenge to run",
-		zap.Strings("available days", lib.Keys(challenges)),
+		"please choose a solution to run",
+		zap.Ints("available days", sortedSolutionNames()),
 	)
 
 	day, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -59,15 +79,12 @@ func main() {
 
 	day = strings.Trim(day, "0\n")
 
-	cInit, ok := challenges[day]
+	sInit, ok := solutions[day]
 	if !ok {
-		log.Fatal(
-			"the specified challenge has not been completed or does not exist",
-			zap.String("day", day),
-		)
+		log.Fatal("the specified solution has not been completed or does not exist", zap.String("day", day))
 	}
 
-	fetcher, err := aoc.NewFetcher(log, sessionCookie, "inputs")
+	fetcher, err := aoc.NewFetcher(log, sessionCookie, localFolder)
 	if err != nil {
 		log.Fatal("failed to init aoc fetcher", zap.Error(err))
 	}
@@ -78,19 +95,37 @@ func main() {
 	}
 
 	log.Info("input fetched, initializing solution")
-	challenge := cInit()
+	solution := sInit(log)
 
 	log.Info("solution initialized, running part one...")
-	err = challenge.PartOne(ctx, input)
+	err = solution.PartOne(ctx, input)
 	if err != nil {
 		log.Fatal("error occurred while running solution part one", zap.Error(err))
 	}
 
-	log.Info("solution initialized, running part two...")
-	err = challenge.PartTwo(ctx, input)
+	log.Info("part one complete, running part two...")
+	err = solution.PartTwo(ctx, input)
 	if err != nil {
 		log.Fatal("error occurred while running solution part two", zap.Error(err))
 	}
 
 	log.Info("complete!")
+}
+
+// Map iteration is non-deterministic, so we need to manually sort the keys.
+func sortedSolutionNames() []int {
+	asNums := lib.Map(
+		lib.Keys(solutions),
+		func(k string) int {
+			i, err := strconv.ParseInt(k, 10, 32)
+			if err != nil {
+				return 0
+			}
+			return int(i)
+		},
+	)
+
+	sort.SliceStable(asNums, func(i, j int) bool { return asNums[i] < asNums[j] })
+
+	return asNums
 }
