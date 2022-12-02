@@ -40,7 +40,7 @@ func initLogger() *zap.Logger {
 	cfg.Level.SetLevel(zap.InfoLevel)
 	cfg.DisableStacktrace = true
 
-	if trace, err := strconv.ParseBool(os.Getenv("TRACE")); err != nil && trace {
+	if os.Getenv("TRACE") != "" {
 		cfg.Level.SetLevel(zap.DebugLevel)
 		cfg.DisableStacktrace = false
 	}
