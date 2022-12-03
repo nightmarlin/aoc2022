@@ -24,6 +24,25 @@ func Map[T any, U any](slice []T, mapper func(T) U) []U {
 	return out
 }
 
+func Filter[T any](slice []T, filter func(T) bool) []T {
+	res := make([]T, 0)
+	for i := range slice {
+		if filter(slice[i]) {
+			res = append(res, slice[i])
+		}
+	}
+	return res
+}
+
+func Any[T any](slice []T, comp func(T) bool) bool {
+	for i := range slice {
+		if comp(slice[i]) {
+			return true
+		}
+	}
+	return false
+}
+
 func Keys[K comparable, V any](m map[K]V) []K {
 	res := make([]K, 0, len(m))
 	for k := range m {

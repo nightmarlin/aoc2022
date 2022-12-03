@@ -14,6 +14,7 @@ import (
 	"github.com/nightmarlin/aoc2022/aoc"
 	"github.com/nightmarlin/aoc2022/day01"
 	"github.com/nightmarlin/aoc2022/day02"
+	"github.com/nightmarlin/aoc2022/day03"
 	"github.com/nightmarlin/aoc2022/lib"
 )
 
@@ -33,6 +34,7 @@ type Solution interface {
 var solutions = map[string]func(*zap.Logger) Solution{
 	"1": func(log *zap.Logger) Solution { return day01.New(log) },
 	"2": func(log *zap.Logger) Solution { return day02.New(log) },
+	"3": func(log *zap.Logger) Solution { return day03.New(log) },
 }
 
 func initLogger() *zap.Logger {
