@@ -31,14 +31,8 @@ type MapSet[T comparable] map[T]struct{}
 // NewMapSet initializes and returns an empty MapSet implementation of Set.
 func NewMapSet[T comparable]() MapSet[T] { return make(MapSet[T]) }
 
-func (m MapSet[T]) Members() []T {
-	res := make([]T, 0, len(m))
-	for k := range m {
-		res = append(res, k)
-	}
-	return res
-}
-func (m MapSet[T]) Insert(t T) { m[t] = struct{}{} }
+func (m MapSet[T]) Members() []T { return lib.Keys(m) }
+func (m MapSet[T]) Insert(t T)   { m[t] = struct{}{} }
 func (m MapSet[T]) Intersect(other Set[T]) Set[T] {
 	mMembers, oMembers := m.Members(), other.Members()
 	intersection := lib.Filter(
