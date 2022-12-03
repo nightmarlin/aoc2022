@@ -15,7 +15,7 @@ type Day02 struct {
 }
 
 func New(log *zap.Logger) Day02 {
-	return Day02{log: log}
+	return Day02{log: log.Named("day-02")}
 }
 
 // region Rock Paper Scissors
